@@ -5,7 +5,7 @@ import { useWindowSize } from 'react-use';
 
 // Material UI Components
 import {
-  Box, Button, TextField, Typography, Container, Paper, Avatar,
+  Box, Button, TextField, Typography, Paper, Avatar,
   AppBar, Toolbar, Stack, Card, CardActionArea, Divider, Badge
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
