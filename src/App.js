@@ -112,7 +112,7 @@ function App() {
     if (isConsensus) {
       setTimeout(() => {
         updateHostState({ ...stateRef.current, triggerConfetti: false });
-      }, 5000); // 5 seconds of confetti
+      }, 5000); // 5 seconds of confetti and dancing
     }
   };
 
@@ -194,9 +194,40 @@ function App() {
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'grey.50' }}>
 
+      {/* 3. INJECT CUSTOM CSS ANIMATIONS */}
+      <style>
+        {`
+          @keyframes victoryDance {
+            0% { transform: translateY(0) rotate(0deg) scale(1); }
+            25% { transform: translateY(-20px) rotate(-10deg) scale(1.1); }
+            50% { transform: translateY(0) rotate(10deg) scale(1.1); }
+            75% { transform: translateY(-20px) rotate(-10deg) scale(1.1); }
+            100% { transform: translateY(0) rotate(0deg) scale(1); }
+          }
+          .dancing-avatar {
+            animation: victoryDance 1s ease-in-out infinite;
+            transform-origin: bottom center;
+          }
+          @keyframes pulseText {
+            0%, 100% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(1.05); opacity: 1; }
+          }
+          .pulsing-banner {
+            animation: pulseText 1.5s ease-in-out infinite;
+          }
+        `}
+      </style>
+
+      {/* 4. THE CONFETTI & BANNER OVERLAY */}
       {roomState.triggerConfetti && (
-        <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 9999 }}>
+        <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <Confetti width={width} height={height} recycle={false} numberOfPieces={600} gravity={0.12} />
+
+          <Paper elevation={12} className="pulsing-banner" sx={{ mt: -30, px: 6, py: 2, bgcolor: 'success.main', color: 'white', borderRadius: 10, border: '4px solid white' }}>
+            <Typography variant="h3" fontWeight="900" sx={{ textShadow: '2px 2px 4px rgba(0,0,0,0.3)' }}>
+              🎉 PERFECT CONSENSUS! 🎉
+            </Typography>
+          </Paper>
         </Box>
       )}
 
@@ -223,11 +254,18 @@ function App() {
       <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 4 }}>
         <Paper elevation={0} sx={{ width: '100%', maxWidth: 1000, minHeight: 400, bgcolor: 'grey.200', borderRadius: 8, border: '8px solid', borderColor: 'grey.300', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 6, p: 4 }}>
           {roomState.users.map((user) => {
-            // 3. Apply Colors to the Table Cards
+            // Apply Colors to the Table Cards
             const cardStyle = user.vote ? getCardColor(user.vote) : null;
 
             return (
-              <Stack key={user.id} alignItems="center" spacing={1} sx={{ position: 'relative' }}>
+              <Stack
+                key={user.id}
+                alignItems="center"
+                spacing={1}
+                sx={{ position: 'relative' }}
+                // 5. APPLY DANCING CLASS IF TRIGGERED
+                className={roomState.triggerConfetti ? 'dancing-avatar' : ''}
+              >
                 <Badge
                   overlap="circular"
                   anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
@@ -275,7 +313,7 @@ function App() {
           {STORY_POINTS.map(point => {
             const isSelected = roomState.users.find(u => u.id === peer?.id)?.vote === point;
 
-            // 4. Apply Colors to the Hand of Cards
+            // Apply Colors to the Hand of Cards
             const cardStyle = getCardColor(point);
 
             return (
