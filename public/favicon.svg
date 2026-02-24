@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <rect x="15" y="10" width="70" height="80" rx="10" fill="#ffffff" stroke="#4f46e5" stroke-width="6"/>
+
+    <path d="M50 35 C50 35, 30 55, 30 65 C30 75, 40 80, 50 70 C60 80, 70 75, 70 65 C70 55, 50 35, 50 35 Z" fill="#4f46e5"/>
+    <path d="M50 70 L45 80 L55 80 Z" fill="#4f46e5"/>
+
+    <text x="25" y="30" font-family="Arial" font-weight="bold" font-size="14" fill="#4f46e5">A</text>
+    <text x="75" y="80" font-family="Arial" font-weight="bold" font-size="14" fill="#4f46e5" text-anchor="end" transform="rotate(180 75 75)">A</text>
+</svg>
