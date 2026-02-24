@@ -26,6 +26,21 @@ const customIceConfig = {
   ]
 };
 
+// 1. Color Dictionary
+const getCardColor = (point) => {
+  const colors = {
+    '1':  { bg: '#e3f2fd', border: '#90caf9', text: '#1565c0' },
+    '2':  { bg: '#f3e5f5', border: '#ce93d8', text: '#6a1b9a' },
+    '3':  { bg: '#e8f5e9', border: '#a5d6a7', text: '#2e7d32' },
+    '5':  { bg: '#fff3e0', border: '#ffcc80', text: '#ef6c00' },
+    '8':  { bg: '#ffebee', border: '#ef9a9a', text: '#c62828' },
+    '13': { bg: '#e0f7fa', border: '#80deea', text: '#00838f' },
+    '21': { bg: '#fce4ec', border: '#f48fb1', text: '#ad1457' },
+    '?':  { bg: '#f5f5f5', border: '#e0e0e0', text: '#424242' },
+  };
+  return colors[point] || colors['?'];
+};
+
 function App() {
   const { width, height } = useWindowSize();
   const [peer, setPeer] = useState(null);
@@ -45,21 +60,18 @@ function App() {
   // ---------------------------------------------------------
   const handleCreateRoom = () => {
     if (!userName) return alert("Please enter your name");
-
     const newPeer = new Peer({ config: customIceConfig });
 
     newPeer.on('open', (id) => {
       setPeer(newPeer);
       setRoomId(id);
       setRole('host');
-
       const hostUser = { id, name: userName, avatar: generateAvatar(userName + id), vote: null };
       updateHostState({ users: [hostUser], revealed: false, triggerConfetti: false });
     });
 
     newPeer.on('connection', (conn) => {
       connectionsRef.current.push(conn);
-
       conn.on('data', (data) => {
         if (data.type === 'JOIN') {
           const newUser = { id: conn.peer, name: data.name, avatar: data.avatar, vote: null };
@@ -70,7 +82,6 @@ function App() {
           updateHostState({ ...stateRef.current, users: updatedUsers });
         }
       });
-
       conn.on('close', () => {
         connectionsRef.current = connectionsRef.current.filter(c => c.peer !== conn.peer);
         updateHostState({ ...stateRef.current, users: stateRef.current.users.filter(u => u.id !== conn.peer) });
@@ -84,11 +95,25 @@ function App() {
     connectionsRef.current.forEach(conn => conn.send({ type: 'STATE_UPDATE', state: newState }));
   };
 
+  // 2. The Consensus Algorithm
   const hostReveal = () => {
-    updateHostState({ ...stateRef.current, revealed: true, triggerConfetti: true });
-    setTimeout(() => {
-      updateHostState({ ...stateRef.current, triggerConfetti: false });
-    }, 4000);
+    const users = stateRef.current.users;
+
+    // Check if everyone voted, and nobody voted '?'
+    const activeVotes = users.filter(u => u.vote && u.vote !== '?');
+    const everyoneVoted = activeVotes.length === users.length && users.length > 0;
+
+    // Check if all votes are exactly the same
+    const isConsensus = everyoneVoted && activeVotes.every(u => u.vote === activeVotes[0].vote);
+
+    updateHostState({ ...stateRef.current, revealed: true, triggerConfetti: isConsensus });
+
+    // Only turn off the confetti flag if it was triggered
+    if (isConsensus) {
+      setTimeout(() => {
+        updateHostState({ ...stateRef.current, triggerConfetti: false });
+      }, 5000); // 5 seconds of confetti
+    }
   };
 
   const hostClear = () => updateHostState({ users: stateRef.current.users.map(u => ({ ...u, vote: null })), revealed: false, triggerConfetti: false });
@@ -98,7 +123,6 @@ function App() {
   // ---------------------------------------------------------
   const handleJoinRoom = () => {
     if (!userName || !joinId) return alert("Please enter name and Room ID");
-
     const newPeer = new Peer({ config: customIceConfig });
     setPeer(newPeer);
     setRole('guest');
@@ -151,32 +175,12 @@ function App() {
           </Typography>
 
           <Stack spacing={3}>
-            <TextField
-              label="Display Name"
-              variant="outlined"
-              fullWidth
-              placeholder="e.g., Raushan"
-              value={userName}
-              onChange={(e) => setUserName(e.target.value)}
-            />
-            <Button variant="contained" size="large" onClick={handleCreateRoom} sx={{ py: 1.5, fontWeight: 'bold' }}>
-              Start New Session
-            </Button>
-
+            <TextField label="Display Name" variant="outlined" fullWidth placeholder="e.g., Raushan" value={userName} onChange={(e) => setUserName(e.target.value)} />
+            <Button variant="contained" size="large" onClick={handleCreateRoom} sx={{ py: 1.5, fontWeight: 'bold' }}>Start New Session</Button>
             <Divider>OR JOIN</Divider>
-
             <Stack direction="row" spacing={1}>
-              <TextField
-                label="Room ID"
-                variant="outlined"
-                fullWidth
-                size="small"
-                value={joinId}
-                onChange={(e) => setJoinId(e.target.value)}
-              />
-              <Button variant="outlined" color="success" onClick={handleJoinRoom} sx={{ px: 4, fontWeight: 'bold' }}>
-                Join
-              </Button>
+              <TextField label="Room ID" variant="outlined" fullWidth size="small" value={joinId} onChange={(e) => setJoinId(e.target.value)} />
+              <Button variant="outlined" color="success" onClick={handleJoinRoom} sx={{ px: 4, fontWeight: 'bold' }}>Join</Button>
             </Stack>
           </Stack>
         </Paper>
@@ -192,7 +196,7 @@ function App() {
 
       {roomState.triggerConfetti && (
         <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 9999 }}>
-          <Confetti width={width} height={height} recycle={false} numberOfPieces={400} gravity={0.15} />
+          <Confetti width={width} height={height} recycle={false} numberOfPieces={600} gravity={0.12} />
         </Box>
       )}
 
@@ -200,9 +204,7 @@ function App() {
       <AppBar position="static" color="default" elevation={1} sx={{ bgcolor: 'white' }}>
         <Toolbar sx={{ justifyContent: 'space-between' }}>
           <Stack direction="row" alignItems="center" spacing={2}>
-            <Typography variant="h6" color="text.secondary" fontWeight="bold">
-              Room ID:
-            </Typography>
+            <Typography variant="h6" color="text.secondary" fontWeight="bold">Room ID:</Typography>
             <Paper variant="outlined" sx={{ px: 2, py: 0.5, bgcolor: 'grey.100', color: 'primary.main', fontWeight: 'bold', userSelect: 'all' }}>
               {role === 'host' ? roomId : joinId}
             </Paper>
@@ -210,12 +212,8 @@ function App() {
 
           {role === 'host' && (
             <Stack direction="row" spacing={2}>
-              <Button variant="contained" color="primary" startIcon={<VisibilityIcon />} onClick={hostReveal} sx={{ fontWeight: 'bold' }}>
-                Reveal
-              </Button>
-              <Button variant="outlined" color="error" startIcon={<DeleteSweepIcon />} onClick={hostClear} sx={{ fontWeight: 'bold' }}>
-                Clear
-              </Button>
+              <Button variant="contained" color="primary" startIcon={<VisibilityIcon />} onClick={hostReveal} sx={{ fontWeight: 'bold' }}>Reveal</Button>
+              <Button variant="outlined" color="error" startIcon={<DeleteSweepIcon />} onClick={hostClear} sx={{ fontWeight: 'bold' }}>Clear</Button>
             </Stack>
           )}
         </Toolbar>
@@ -223,42 +221,51 @@ function App() {
 
       {/* THE MAIN BOARD (THE TABLE) */}
       <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 4 }}>
-        <Paper elevation={0} sx={{
-          width: '100%', maxWidth: 1000, minHeight: 400, bgcolor: 'grey.200',
-          borderRadius: 8, border: '8px solid', borderColor: 'grey.300',
-          display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 6, p: 4
-        }}>
-          {roomState.users.map((user) => (
-            <Stack key={user.id} alignItems="center" spacing={1} sx={{ position: 'relative' }}>
+        <Paper elevation={0} sx={{ width: '100%', maxWidth: 1000, minHeight: 400, bgcolor: 'grey.200', borderRadius: 8, border: '8px solid', borderColor: 'grey.300', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 6, p: 4 }}>
+          {roomState.users.map((user) => {
+            // 3. Apply Colors to the Table Cards
+            const cardStyle = user.vote ? getCardColor(user.vote) : null;
 
-              <Badge
-                overlap="circular"
-                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-                badgeContent={
-                  <Paper elevation={3} sx={{
-                    width: 40, height: 50, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    borderRadius: 1, fontWeight: 'bold', fontSize: '1.2rem',
-                    bgcolor: roomState.revealed ? 'white' : (user.vote ? 'primary.main' : 'grey.100'),
-                    color: roomState.revealed ? 'primary.main' : (user.vote ? 'primary.main' : 'grey.400'),
-                    border: '2px solid',
-                    borderColor: roomState.revealed ? 'primary.light' : (user.vote ? 'primary.main' : 'grey.300'),
-                    transform: roomState.revealed ? 'translateY(-8px)' : 'none',
-                    transition: 'all 0.3s ease'
-                  }}>
-                    {roomState.revealed ? (user.vote || '-') : (user.vote ? '✓' : '?')}
-                  </Paper>
-                }
-              >
-                <Avatar src={user.avatar} sx={{ width: 90, height: 90, border: '4px solid white', boxShadow: 2, bgcolor: 'grey.100' }} />
-              </Badge>
+            return (
+              <Stack key={user.id} alignItems="center" spacing={1} sx={{ position: 'relative' }}>
+                <Badge
+                  overlap="circular"
+                  anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+                  badgeContent={
+                    <Paper elevation={3} sx={{
+                      width: 40, height: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 1, fontWeight: 'bold', fontSize: '1.2rem',
 
-              <Paper elevation={1} sx={{ px: 2, py: 0.5, borderRadius: 5, mt: 2 }}>
-                <Typography variant="subtitle2" fontWeight="bold" color="text.secondary">
-                  {user.name}
-                </Typography>
-              </Paper>
-            </Stack>
-          ))}
+                      // Dynamic Background
+                      bgcolor: roomState.revealed && cardStyle
+                        ? cardStyle.bg
+                        : (user.vote ? 'primary.main' : 'grey.100'),
+
+                      // Dynamic Text Color
+                      color: roomState.revealed && cardStyle
+                        ? cardStyle.text
+                        : (user.vote ? 'white' : 'grey.400'),
+
+                      // Dynamic Border Color
+                      border: '2px solid',
+                      borderColor: roomState.revealed && cardStyle
+                        ? cardStyle.border
+                        : (user.vote ? 'primary.dark' : 'grey.300'),
+
+                      transform: roomState.revealed ? 'translateY(-8px)' : 'none',
+                      transition: 'all 0.3s ease'
+                    }}>
+                      {roomState.revealed ? (user.vote || '-') : (user.vote ? '✓' : '?')}
+                    </Paper>
+                  }
+                >
+                  <Avatar src={user.avatar} sx={{ width: 90, height: 90, border: '4px solid white', boxShadow: 2, bgcolor: 'grey.100' }} />
+                </Badge>
+                <Paper elevation={1} sx={{ px: 2, py: 0.5, borderRadius: 5, mt: 2 }}>
+                  <Typography variant="subtitle2" fontWeight="bold" color="text.secondary">{user.name}</Typography>
+                </Paper>
+              </Stack>
+            );
+          })}
         </Paper>
       </Box>
 
@@ -267,6 +274,10 @@ function App() {
         <Stack direction="row" spacing={2} flexWrap="wrap" justifyContent="center" useFlexGap>
           {STORY_POINTS.map(point => {
             const isSelected = roomState.users.find(u => u.id === peer?.id)?.vote === point;
+
+            // 4. Apply Colors to the Hand of Cards
+            const cardStyle = getCardColor(point);
+
             return (
               <Card
                 key={point}
@@ -276,13 +287,15 @@ function App() {
                   transform: isSelected ? 'translateY(-12px)' : 'none',
                   transition: 'transform 0.2s ease-in-out',
                   border: isSelected ? '2px solid' : '1px solid',
-                  borderColor: isSelected ? 'primary.main' : 'grey.300',
-                  bgcolor: isSelected ? 'primary.50' : 'white',
+
+                  borderColor: isSelected ? cardStyle.border : 'grey.300',
+                  bgcolor: isSelected ? cardStyle.bg : 'white',
+
                   overflow: 'visible'
                 }}
               >
                 <CardActionArea onClick={() => castVote(point)} sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Typography variant="h5" fontWeight="bold" color={isSelected ? 'primary.main' : 'text.secondary'}>
+                  <Typography variant="h5" fontWeight="bold" color={isSelected ? cardStyle.text : 'text.secondary'}>
                     {point}
                   </Typography>
                 </CardActionArea>
