@@ -225,7 +225,7 @@ function App() {
 
           <Paper elevation={12} className="pulsing-banner" sx={{ mt: -30, px: 6, py: 2, bgcolor: 'success.main', color: 'white', borderRadius: 10, border: '4px solid white' }}>
             <Typography variant="h3" fontWeight="900" sx={{ textShadow: '2px 2px 4px rgba(0,0,0,0.3)' }}>
-              🎉 PERFECT CONSENSUS! 🎉
+              🎉 PERFECT TEAMWORK! 🎉
             </Typography>
           </Paper>
         </Box>
